@@ -1,0 +1,72 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Two builds of the same sources:
+      net10.0 -> Jellyfin 12.x  (targetAbi 12.0.0.0)
+      net9.0  -> Jellyfin 10.11 (targetAbi 10.11.0.0)
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net9.0</TargetFrameworks>
+    <RootNamespace>Jellyfin.Plugin.Mega</RootNamespace>
+    <AssemblyName>Jellyfin.Plugin.Mega</AssemblyName>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <!--
+    Plugin version = $(PluginVersion).<server major>. The last number keeps the two builds
+    apart in the repository manifest: Jellyfin installs the highest version whose targetAbi
+    it satisfies, so a 12.x server takes x.y.z.12 and a 10.11 server takes x.y.z.11.
+  -->
+  <PropertyGroup>
+    <PluginVersion Condition="'$(PluginVersion)' == ''">1.0.0</PluginVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Version>$(PluginVersion).12</Version>
+    <AssemblyVersion>$(PluginVersion).12</AssemblyVersion>
+    <FileVersion>$(PluginVersion).12</FileVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <DefineConstants>$(DefineConstants);JELLYFIN_10_11</DefineConstants>
+    <Version>$(PluginVersion).11</Version>
+    <AssemblyVersion>$(PluginVersion).11</AssemblyVersion>
+    <FileVersion>$(PluginVersion).11</FileVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Jellyfin.Controller" Version="12.0.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Jellyfin.Model" Version="12.0.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Jellyfin.Model" Version="10.11.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Configuration\configPage.html" />
+    <EmbeddedResource Include="Configuration\configPage.html" />
+    <None Remove="Configuration\configPage.js" />
+    <EmbeddedResource Include="Configuration\configPage.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Jellyfin.Plugin.Mega.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,28 @@
+[
+  {
+    "guid": "61a62eb4-5383-489b-8150-3b595e6a6400",
+    "name": "MEGA",
+    "description": "Plays your MEGA cloud drive in Jellyfin. Files are decrypted on the fly (end-to-end encryption kept), libraries are virtual so nothing is downloaded ahead, playback starts fast and seeks with parallel connections, and MEGA previews are used as thumbnails. Works with MEGA accounts (e-mail, 2FA, or MEGAcmd session) and public folder links.",
+    "overview": "Stream your MEGA cloud drive: decryption on the fly, virtual libraries, fast seeking",
+    "owner": "Sounne",
+    "category": "General",
+    "versions": [
+      {
+        "version": "1.0.0.12",
+        "changelog": "First release: MEGA accounts (e-mail, 2FA, MEGAcmd session) and public folder links, end-to-end decryption, virtual libraries, streaming with seeking, MEGA previews as thumbnails, incremental change tracking.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/Sounne/jellyfin-plugin-mega/releases/download/v1.0.0/jellyfin-plugin-mega_1.0.0.12.zip",
+        "checksum": "2828922fac8e41b021e09d43c73eb147",
+        "timestamp": "2026-11-08T13:11:37Z"
+      },
+      {
+        "version": "1.0.0.11",
+        "changelog": "First release: MEGA accounts (e-mail, 2FA, MEGAcmd session) and public folder links, end-to-end decryption, virtual libraries, streaming with seeking, MEGA previews as thumbnails, incremental change tracking.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Sounne/jellyfin-plugin-mega/releases/download/v1.0.0/jellyfin-plugin-mega_1.0.0.11.zip",
+        "checksum": "66113cf5a6337f44f2f4804e2c49069e",
+        "timestamp": "2026-11-08T13:11:37Z"
+      }
+    ]
+  }
+]

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>MEGA</title>
+</head>
+<body>
+<div id="MegaConfigPage" data-role="page" class="page type-interior pluginConfigurationPage megaConfigPage" data-require="emby-input,emby-button,emby-select,emby-checkbox" data-controller="__plugin/megaconfigjs">
+    <style>
+        .megaConfigPage .megaCard { background: rgba(127, 127, 127, .08); border-radius: .4em; padding: 1em 1.2em; margin: 0 0 1.2em; }
+        .megaConfigPage .megaRow { display: flex; flex-wrap: wrap; gap: .8em; align-items: flex-end; }
+        .megaConfigPage .megaRow > .inputContainer, .megaConfigPage .megaRow > .selectContainer { flex: 1 1 14em; margin-bottom: .6em; }
+        .megaConfigPage .megaMuted { opacity: .7; font-size: .9em; }
+        .megaConfigPage .megaError { color: #e55; }
+        .megaConfigPage .megaOk { color: #5b5; }
+        .megaConfigPage .megaList { list-style: none; padding: 0; margin: 0; }
+        .megaConfigPage .megaList > li { display: flex; align-items: center; gap: 1em; padding: .6em 0; border-bottom: 1px solid rgba(127, 127, 127, .2); }
+        .megaConfigPage .megaList > li > .megaGrow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+        .megaConfigPage .megaTabs { display: flex; gap: .4em; margin-bottom: 1em; flex-wrap: wrap; }
+        .megaConfigPage .megaPicker { border: 1px solid rgba(127, 127, 127, .3); border-radius: .3em; margin: .4em 0 1em; padding: .6em; max-height: 22em; overflow: auto; }
+        .megaConfigPage .megaPicker button.megaFolder { display: block; width: 100%; text-align: left; background: none; border: 0; color: inherit; padding: .45em .3em; cursor: pointer; font: inherit; }
+        .megaConfigPage .megaPicker button.megaFolder:hover { background: rgba(127, 127, 127, .15); }
+        .megaConfigPage .megaSmallButton { margin: 0 !important; flex: 0 0 auto; }
+        .megaConfigPage h3 { margin-top: 0; }
+    </style>
+    <div data-role="content">
+        <div class="content-primary">
+            <h2 class="sectionTitle">MEGA</h2>
+            <p class="megaMuted">Plays your MEGA cloud drive in Jellyfin. Files are decrypted on the fly (end-to-end), libraries are virtual: nothing is downloaded ahead, only small side files (subtitles, .nfo, posters).</p>
+
+            <div class="megaCard">
+                <h3>Status</h3>
+                <div id="megaStatus" class="megaMuted">Loading…</div>
+                <div style="margin-top:.8em">
+                    <button is="emby-button" type="button" id="megaSyncNow" class="raised emby-button megaSmallButton"><span>Synchronize now</span></button>
+                </div>
+            </div>
+
+            <div class="megaCard">
+                <h3>MEGA accounts</h3>
+                <ul id="megaAccounts" class="megaList"></ul>
+                <h4>Add a source</h4>
+                <div class="megaTabs">
+                    <button is="emby-button" type="button" class="raised emby-button button-submit megaTab" data-tab="login">Account (e-mail)</button>
+                    <button is="emby-button" type="button" class="raised emby-button megaTab" data-tab="session">Session (MEGAcmd)</button>
+                    <button is="emby-button" type="button" class="raised emby-button megaTab" data-tab="link">Public folder link</button>
+                </div>
+                <form id="megaLoginForm" class="megaTabPanel" data-tab="login">
+                    <div class="megaRow">
+                        <div class="inputContainer"><input is="emby-input" type="text" id="megaLoginName" label="Display name (optional)"></div>
+                        <div class="inputContainer"><input is="emby-input" type="email" id="megaLoginEmail" label="E-mail" autocomplete="username" required></div>
+                    </div>
+                    <div class="megaRow">
+                        <div class="inputContainer"><input is="emby-input" type="password" id="megaLoginPassword" label="Password" autocomplete="current-password" required></div>
+                        <div class="inputContainer"><input is="emby-input" type="text" id="megaLoginMfa" label="2FA code (if enabled)" inputmode="numeric" autocomplete="one-time-code"></div>
+                    </div>
+                    <p class="megaMuted">The password is used once to log in and is never stored: only the session is kept, in the plugin configuration of this server.</p>
+                    <button is="emby-button" type="submit" class="raised button-submit emby-button"><span>Log in</span></button>
+                </form>
+                <form id="megaSessionForm" class="megaTabPanel hide" data-tab="session">
+                    <div class="megaRow">
+                        <div class="inputContainer"><input is="emby-input" type="text" id="megaSessionName" label="Display name (optional)"></div>
+                        <div class="inputContainer"><input is="emby-input" type="password" id="megaSessionValue" label="Session (output of mega-session)" required></div>
+                    </div>
+                    <button is="emby-button" type="submit" class="raised button-submit emby-button"><span>Add session</span></button>
+                </form>
+                <form id="megaLinkForm" class="megaTabPanel hide" data-tab="link">
+                    <div class="megaRow">
+                        <div class="inputContainer"><input is="emby-input" type="text" id="megaLinkName" label="Display name (optional)"></div>
+                        <div class="inputContainer"><input is="emby-input" type="url" id="megaLinkValue" label="https://mega.nz/folder/…#…" required></div>
+                    </div>
+                    <p class="megaMuted">Read-only access to a shared folder, no account needed. The link must contain its key (after #).</p>
+                    <button is="emby-button" type="submit" class="raised button-submit emby-button"><span>Add folder link</span></button>
+                </form>
+            </div>
+
+            <form id="megaSettingsForm">
+                <div class="megaCard">
+                    <h3>Libraries</h3>
+                    <p class="megaMuted">Each entry maps a MEGA folder to a Jellyfin library. The plugin keeps a virtual copy of the folder (one small .strm file per video or song) and creates the Jellyfin library for you.</p>
+                    <div id="megaLibraries"></div>
+                    <button is="emby-button" type="button" id="megaAddLibrary" class="raised emby-button megaSmallButton"><span>Add a library</span></button>
+                </div>
+
+                <div class="megaCard">
+                    <h3>Synchronization</h3>
+                    <div class="megaRow">
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="SyncIntervalMinutes" min="1" max="1440" label="Check MEGA for changes every (minutes)">
+                        </div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="ProbeAfterScan"><span>Read media details after each scan</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">Duration, codecs and audio/subtitle tracks of new items (a few MB read per file).</div>
+                    </div>
+                </div>
+
+                <div class="megaCard">
+                    <h3>Thumbnails</h3>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="UseMegaPreviews"><span>Use MEGA previews</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">Images MEGA made at upload time: instant, no video read. Online artwork (TMDb…) still wins when found.</div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="ExtractFrameWhenNoPreview"><span>Extract a frame when MEGA has no preview</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">Uses ffmpeg on the stream; reads a few MB of the file.</div>
+                    </div>
+                </div>
+
+                <div class="megaCard">
+                    <h3>Streaming</h3>
+                    <div class="megaRow">
+                        <div class="inputContainer"><input is="emby-input" type="number" id="ReadAheadMegabytes" min="8" max="512" label="Read-ahead per stream (MB)"></div>
+                        <div class="inputContainer"><input is="emby-input" type="number" id="ConnectionsPerFile" min="1" max="16" label="Parallel connections per stream"></div>
+                        <div class="inputContainer"><input is="emby-input" type="number" id="DiskCacheMegabytes" min="0" max="1048576" label="Disk cache (MB, start and end of files)"></div>
+                    </div>
+                    <details>
+                        <summary class="megaMuted" style="cursor:pointer">Advanced</summary>
+                        <div class="inputContainer" style="margin-top:1em">
+                            <input is="emby-input" type="text" id="StreamBaseUrl" label="Internal stream address (leave empty)">
+                            <div class="fieldDescription">Address ffmpeg uses to read MEGA files from this server. Empty = http://127.0.0.1:&lt;port&gt;. Changing it rewrites every .strm file.</div>
+                        </div>
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label><input is="emby-checkbox" type="checkbox" id="RestrictStreamToLocalhost"><span>Serve the internal stream address to this machine only</span></label>
+                            <div class="fieldDescription checkboxFieldDescription">Clients always play through the normal Jellyfin endpoints, which keep the usual access control.</div>
+                        </div>
+                    </details>
+                </div>
+
+                <button is="emby-button" type="submit" class="raised button-submit block emby-button"><span>Save</span></button>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>
