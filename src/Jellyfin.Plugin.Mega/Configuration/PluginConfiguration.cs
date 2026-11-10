@@ -45,6 +45,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets a value indicating whether new items are probed (duration, codecs, audio tags) after each scan.</summary>
     public bool ProbeAfterScan { get; set; } = true;
 
+    /// <summary>
+    /// Gets or sets how much of a MEGA file ffmpeg and ffprobe analyse before playing or describing it, in
+    /// seconds (Jellyfin's own setting, 200 seconds by default, when 0).
+    /// </summary>
+    public int FfmpegAnalyzeSeconds { get; set; } = 10;
+
     /// <summary>Gets or sets the secret used to sign stream URLs (generated on first start).</summary>
     public string StreamSecret { get; set; } = string.Empty;
 }

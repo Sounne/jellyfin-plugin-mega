@@ -13,6 +13,7 @@ using MediaBrowser.Common.Net;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.Mega.Services;
@@ -35,10 +36,12 @@ public sealed class MegaManager : IDisposable
         ILogger<MegaManager> logger,
         IServerApplicationHost host,
         IServerConfigurationManager serverConfig,
-        IServerApplicationPaths paths)
+        IServerApplicationPaths paths,
+        IConfiguration configuration)
     {
         _logger = logger;
         MegaApiClient.Log = logger;
+        FfmpegAnalysis.Install(configuration, () => Plugin.Instance?.Configuration.FfmpegAnalyzeSeconds ?? 10, logger);
         _host = host;
         _serverConfig = serverConfig;
         _paths = paths;

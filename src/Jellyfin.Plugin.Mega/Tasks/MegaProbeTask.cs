@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.Mega.Services;
+using Jellyfin.Plugin.Mega.Streaming;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Providers;
@@ -62,6 +63,7 @@ public class MegaProbeTask : ILibraryPostScanTask
             {
                 try
                 {
+                    using var analysis = FfmpegAnalysis.Enter();
                     await item.RefreshMetadata(
                         new MetadataRefreshOptions(new DirectoryService(_fileSystem))
                         {

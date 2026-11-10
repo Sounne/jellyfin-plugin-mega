@@ -24,6 +24,7 @@ namespace Jellyfin.Plugin.Mega.Api;
 /// <item>Static streams (<c>/Videos/{id}/stream?static=true</c>, <c>/Audio/{id}/stream</c>) of MEGA items are
 /// served directly with byte ranges (seeking), without the server calling itself.</item>
 /// <item>Universal audio never redirects clients to the server-local URL.</item>
+/// <item>ffprobe and ffmpeg runs for MEGA items analyse a few seconds of the file, not 200 (<see cref="FfmpegAnalysis"/>).</item>
 /// </list>
 /// </summary>
 public sealed class MegaPlaybackFilter : IAsyncActionFilter, IAsyncResultFilter
@@ -31,6 +32,12 @@ public sealed class MegaPlaybackFilter : IAsyncActionFilter, IAsyncResultFilter
     private static readonly HashSet<string> StaticStreamActions = new(StringComparer.Ordinal)
     {
         "GetVideoStream", "GetVideoStreamByContainer", "GetAudioStream", "GetAudioStreamByContainer",
+    };
+
+    /// <summary>Controllers that serve, probe or transcode media (the others never start ffmpeg for an item).</summary>
+    private static readonly HashSet<string> MediaControllers = new(StringComparer.Ordinal)
+    {
+        "MediaInfo", "Videos", "Audio", "UniversalAudio", "DynamicHls", "HlsSegment", "VideoHls", "Subtitle",
     };
 
     private readonly MegaManager _manager;
@@ -46,33 +53,37 @@ public sealed class MegaPlaybackFilter : IAsyncActionFilter, IAsyncResultFilter
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        if (context.ActionDescriptor is ControllerActionDescriptor action)
+        if (context.ActionDescriptor is not ControllerActionDescriptor action
+            || !MediaControllers.Contains(action.ControllerName)
+            || GetItem(context) is not BaseItem item
+            || !_manager.IsManagedPath(item.Path))
         {
-            if (StaticStreamActions.Contains(action.ActionName)
-                && context.ActionArguments.TryGetValue("static", out var st) && st is true
-                && GetItem(context) is BaseItem item
-                && _manager.IsManagedPath(item.Path))
-            {
-                var url = !string.IsNullOrEmpty(item.ShortcutPath) ? item.ShortcutPath : MegaManager.ReadStrm(item.Path);
-                if (StreamUrls.TryParse(url, out var sourceId, out var handle))
-                {
-                    var found = await _manager.ResolveAsync(sourceId, handle, context.HttpContext.RequestAborted).ConfigureAwait(false);
-                    if (found is not null)
-                    {
-                        context.Result = new MegaRangeResult(_manager, found.Value.Source, found.Value.Node, _logger);
-                        return;
-                    }
-                }
-            }
-            else if (action.ActionName == "GetUniversalAudioStream"
-                && context.ActionArguments.ContainsKey("enableRedirection")
-                && GetItem(context) is BaseItem audio
-                && _manager.IsManagedPath(audio.Path))
-            {
-                context.ActionArguments["enableRedirection"] = false;
-            }
+            await next().ConfigureAwait(false);
+            return;
         }
 
+        if (StaticStreamActions.Contains(action.ActionName)
+            && context.ActionArguments.TryGetValue("static", out var st) && st is true)
+        {
+            var url = !string.IsNullOrEmpty(item.ShortcutPath) ? item.ShortcutPath : MegaManager.ReadStrm(item.Path);
+            if (StreamUrls.TryParse(url, out var sourceId, out var handle))
+            {
+                var found = await _manager.ResolveAsync(sourceId, handle, context.HttpContext.RequestAborted).ConfigureAwait(false);
+                if (found is not null)
+                {
+                    context.Result = new MegaRangeResult(_manager, found.Value.Source, found.Value.Node, _logger);
+                    return;
+                }
+            }
+        }
+        else if (action.ActionName == "GetUniversalAudioStream" && context.ActionArguments.ContainsKey("enableRedirection"))
+        {
+            context.ActionArguments["enableRedirection"] = false;
+        }
+
+        // ffprobe (playback info probes .strm items again) and ffmpeg (transcode, seek, subtitles) started by
+        // this request: short analysis of the MEGA file.
+        using var analysis = FfmpegAnalysis.Enter();
         await next().ConfigureAwait(false);
     }
 
@@ -108,20 +119,34 @@ public sealed class MegaPlaybackFilter : IAsyncActionFilter, IAsyncResultFilter
         await next().ConfigureAwait(false);
     }
 
+    private static readonly string[] MediaSourceArguments = { "mediaSourceId", "routeMediaSourceId" };
+
+    private static readonly string[] ItemArguments = { "itemId", "routeItemId" };
+
     private BaseItem? GetItem(ActionExecutingContext context)
     {
-        Guid id = Guid.Empty;
-        if (context.ActionArguments.TryGetValue("mediaSourceId", out var ms) && ms is string s && Guid.TryParse(s, out var g))
+        var args = context.ActionArguments;
+        foreach (var name in MediaSourceArguments)
         {
-            id = g;
-        }
-        else if (context.ActionArguments.TryGetValue("itemId", out var it) && it is Guid gi)
-        {
-            id = gi;
+            if (args.TryGetValue(name, out var ms) && ms is string s && Guid.TryParse(s, out var g) && g != Guid.Empty)
+            {
+                return _libraryManager.GetItemById(g);
+            }
         }
 
-        return id == Guid.Empty ? null : _libraryManager.GetItemById(id);
+        foreach (var name in ItemArguments)
+        {
+            if (args.TryGetValue(name, out var it) && it is Guid g && g != Guid.Empty)
+            {
+                return _libraryManager.GetItemById(g);
+            }
+        }
+
+        return null;
     }
+
+    private static bool IsMega(MediaSourceInfo? source)
+        => source?.Path is not null && source.Path.IndexOf(StreamUrls.Marker, StringComparison.OrdinalIgnoreCase) >= 0;
 
     private void Patch(IEnumerable<MediaSourceInfo>? sources)
     {
@@ -132,7 +157,7 @@ public sealed class MegaPlaybackFilter : IAsyncActionFilter, IAsyncResultFilter
 
         foreach (var source in sources)
         {
-            if (source?.Path is null || source.Path.IndexOf(StreamUrls.Marker, StringComparison.OrdinalIgnoreCase) < 0)
+            if (source is null || !IsMega(source))
             {
                 continue;
             }

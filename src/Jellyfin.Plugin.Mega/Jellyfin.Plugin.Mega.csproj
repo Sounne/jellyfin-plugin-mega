@@ -20,7 +20,7 @@
     it satisfies, so a 12.x server takes x.y.z.12 and a 10.11 server takes x.y.z.11.
   -->
   <PropertyGroup>
-    <PluginVersion Condition="'$(PluginVersion)' == ''">1.0.1</PluginVersion>
+    <PluginVersion Condition="'$(PluginVersion)' == ''">1.0.2</PluginVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">

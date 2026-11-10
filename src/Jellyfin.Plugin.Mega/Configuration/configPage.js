@@ -9,7 +9,7 @@ const CONTENT_TYPES = [
     ['mixed', 'Mixed movies and shows']
 ];
 
-const NUMBER_SETTINGS = ['SyncIntervalMinutes', 'ReadAheadMegabytes', 'ConnectionsPerFile', 'DiskCacheMegabytes'];
+const NUMBER_SETTINGS = ['SyncIntervalMinutes', 'ReadAheadMegabytes', 'ConnectionsPerFile', 'DiskCacheMegabytes', 'FfmpegAnalyzeSeconds'];
 const TEXT_SETTINGS = ['StreamBaseUrl'];
 const BOOL_SETTINGS = ['RestrictStreamToLocalhost', 'UseMegaPreviews', 'ExtractFrameWhenNoPreview', 'ProbeAfterScan'];
 

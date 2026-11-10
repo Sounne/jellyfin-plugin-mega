@@ -47,6 +47,7 @@ For shows, point the library at a folder of shows. A folder that holds a single 
 | Read-ahead per stream | 48 MB | How far ahead of playback the plugin downloads. The window grows only during steady playback. |
 | Parallel connections per stream | 4 | MEGA limits the speed of each connection, so several are used per file. |
 | Disk cache | 2048 MB | Keeps the start and end of files for fast probing and playback start. |
+| ffmpeg analysis of MEGA files (Advanced) | 10 s | How much of a MEGA file ffmpeg reads to describe it before playback, a transcode or a seek. Jellyfin's own setting (200 s) applies to your other files. 0 = use Jellyfin's setting for MEGA files too. |
 
 A full resynchronization also runs once a day (**Dashboard → Scheduled tasks → MEGA**). The **Synchronize now** button on the plugin page runs one at once.
 
@@ -56,6 +57,7 @@ A full resynchronization also runs once a day (**Dashboard → Scheduled tasks �
 - Each library is a folder of `.strm` files in Jellyfin's data directory, under `data/mega/libraries`. Each `.strm` holds a signed URL of this server (`/MegaFs/stream/…`). Small side files sit next to them: subtitles, `.nfo`, posters.
 - When Jellyfin or a client reads a file, the plugin downloads only the requested byte ranges from MEGA and decrypts them with AES-CTR. Seeks jump straight to the right block.
 - On playback requests, the plugin tells Jellyfin the item is a local file with its real size. Clients can then direct play with byte ranges, and Jellyfin's usual access control applies.
+- Jellyfin runs ffprobe and ffmpeg with a 200-second analysis window. When a track has no full description in the file header (PGS subtitles in MKV, for example), ffmpeg then reads about 350 MB of a 1080p movie before it starts. For MEGA items only, the plugin shortens that window to 10 seconds: playback info, transcode start and seek take about a second instead of 10 to 25.
 
 ## Security
 
@@ -66,7 +68,7 @@ A full resynchronization also runs once a day (**Dashboard → Scheduled tasks �
 ## Limitations
 
 - **MEGA transfer quota.** Everything you watch counts against your MEGA transfer quota. That includes reads by Jellyfin: probing, frame extraction and subtitle extraction. Free accounts have a small quota.
-- Jellyfin re-reads the header of a `.strm` item each time playback starts. This adds a fraction of a second, served from the disk cache.
+- Jellyfin probes a `.strm` item again each time playback starts. This adds a fraction of a second, mostly served from the disk cache.
 - Trickplay images and chapter images are not generated for these items, because they would read whole files.
 - Extracting embedded subtitles makes Jellyfin read the whole file. External subtitle files next to the video are fast.
 - Jellyfin applies no bitrate limit to these items. Clients on slow links should pick a quality by hand.
@@ -143,7 +145,8 @@ Les réglages sont décrits dans le tableau [Settings](#settings) plus haut. Une
 ### Limites
 
 - **Quota de transfert MEGA.** Tout ce que vous regardez compte dans votre quota de transfert MEGA. Les lectures de Jellyfin comptent aussi : analyse, extraction d'images et de sous-titres. Les comptes gratuits ont un petit quota.
-- Jellyfin relit l'en-tête d'un élément `.strm` à chaque début de lecture. Cela ajoute une fraction de seconde, servie depuis le cache disque.
+- Jellyfin analyse de nouveau un élément `.strm` à chaque début de lecture. Cela ajoute une fraction de seconde, servie en grande partie depuis le cache disque.
+- Jellyfin lance ffprobe et ffmpeg avec une fenêtre d'analyse de 200 secondes. Quand une piste n'est pas entièrement décrite dans l'en-tête du fichier (sous-titres PGS dans un MKV, par exemple), ffmpeg lit alors environ 350 Mo d'un film 1080p avant de démarrer. Pour les éléments MEGA seulement, le plugin réduit cette fenêtre à 10 secondes (réglage avancé **ffmpeg analysis of MEGA files**, 0 = réglage de Jellyfin).
 - Pas d'images trickplay ni d'images de chapitres pour ces éléments : il faudrait lire les fichiers en entier.
 - Extraire des sous-titres intégrés fait lire tout le fichier à Jellyfin. Les sous-titres externes à côté de la vidéo sont rapides.
 - Jellyfin n'applique pas de limite de débit à ces éléments. Sur une connexion lente, choisissez la qualité à la main.

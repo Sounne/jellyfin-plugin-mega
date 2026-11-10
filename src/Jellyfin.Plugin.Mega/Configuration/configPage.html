@@ -125,6 +125,10 @@
                             <label><input is="emby-checkbox" type="checkbox" id="RestrictStreamToLocalhost"><span>Serve the internal stream address to this machine only</span></label>
                             <div class="fieldDescription checkboxFieldDescription">Clients always play through the normal Jellyfin endpoints, which keep the usual access control.</div>
                         </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="FfmpegAnalyzeSeconds" min="0" max="600" label="ffmpeg analysis of MEGA files (seconds)">
+                            <div class="fieldDescription">How much of a file ffmpeg reads to describe it before playback, a transcode or a seek. Jellyfin reads up to 200 seconds (about 350 MB for a 1080p movie with PGS subtitles); a few seconds is enough. 0 = Jellyfin's setting.</div>
+                        </div>
                     </details>
                 </div>
 
