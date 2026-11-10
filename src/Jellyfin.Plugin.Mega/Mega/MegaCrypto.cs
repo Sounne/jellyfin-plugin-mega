@@ -331,57 +331,112 @@ internal static class MegaCrypto
     }
 
     /// <summary>
-    /// Proof of work requested by the API (HTTP 402, <c>X-Hashcash</c> header).
-    /// Returns the header value to send back: <c>1:&lt;token&gt;:&lt;prefix&gt;</c>.
+    /// Reads the proof-of-work challenge of an HTTP 402 answer:
+    /// <c>X-Hashcash: 1:&lt;easiness&gt;:&lt;timestamp&gt;:&lt;token&gt;</c> (token: 48 bytes, 64 base64 characters).
     /// </summary>
-    public static string? SolveHashcash(string header)
+    public static bool TryParseHashcash(string? header, out string token, out int easiness)
     {
+        token = string.Empty;
+        easiness = 0;
+        if (string.IsNullOrWhiteSpace(header))
+        {
+            return false;
+        }
+
         var parts = header.Trim().Split(':');
-        if (parts.Length < 4 || parts[0] != "1" || !int.TryParse(parts[1], out var easiness))
+        if (parts.Length < 4
+            || parts[0].Trim() != "1"
+            || !int.TryParse(parts[1].Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out easiness)
+            || easiness > 255)
         {
-            return null;
+            return false;
         }
 
-        var tokenB64 = parts[3];
-        var token = B64Decode(tokenB64);
-        if (token is null || token.Length != 48)
+        var t = parts[3].Trim();
+        if (B64Decode(t) is not { Length: HashcashTokenBytes })
         {
-            return null;
+            return false;
         }
 
-        uint e = (uint)easiness;
-        uint threshold = (((e & 63) << 1) + 1) << (int)(((e >> 6) * 7) + 3);
-        const int Repeat = 262_144;
-        var area = new byte[Repeat * 48];
-        for (int i = 0; i < Repeat; i++)
+        token = t;
+        return true;
+    }
+
+    /// <summary>Largest acceptable first 32-bit word (big endian) of the hash, encoded by the easiness byte.</summary>
+    public static uint HashcashThreshold(int easiness)
+        => (uint)((((easiness & 63) << 1) + 1) << (((easiness >> 6) * 7) + 3));
+
+    /// <summary>
+    /// Solves a proof-of-work challenge the way the MEGA SDK does: finds a 4-byte prefix such that
+    /// SHA-256(prefix || token repeated 262144 times) starts with a big-endian 32-bit word at most
+    /// <see cref="HashcashThreshold"/>. Returns the prefix in base64, the value sent back as
+    /// <c>X-Hashcash: 1:&lt;token&gt;:&lt;prefix&gt;</c>, or null when <paramref name="budget"/> runs out.
+    /// Uses up to 8 background threads of lower priority, so playback keeps its CPU.
+    /// </summary>
+    public static string? SolveHashcash(string token, int easiness, TimeSpan budget, CancellationToken cancellationToken, int workers = 0)
+    {
+        var tokenBytes = B64Decode(token);
+        if (tokenBytes is not { Length: HashcashTokenBytes })
         {
-            Buffer.BlockCopy(token, 0, area, i * 48, 48);
+            throw new ArgumentException("the proof-of-work token must be 48 bytes", nameof(token));
         }
 
-        int threads = Math.Clamp(Environment.ProcessorCount, 1, 8);
+        var area = new byte[HashcashRepeat * HashcashTokenBytes];
+        for (int i = 0; i < HashcashRepeat; i++)
+        {
+            Buffer.BlockCopy(tokenBytes, 0, area, i * HashcashTokenBytes, HashcashTokenBytes);
+        }
+
+        uint threshold = HashcashThreshold(easiness);
+        if (workers <= 0)
+        {
+            workers = Math.Clamp(Environment.ProcessorCount, 1, 8);
+        }
+
+        long deadline = Environment.TickCount64 + (long)Math.Min(budget.TotalMilliseconds, long.MaxValue / 2);
         long found = -1;
-        Parallel.For(0, threads, t =>
+        var threads = new Thread[workers];
+        for (int w = 0; w < workers; w++)
         {
-            using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            Span<byte> prefix = stackalloc byte[4];
-            Span<byte> digest = stackalloc byte[32];
-            uint n = (uint)t;
-            while (Interlocked.Read(ref found) < 0)
+            uint start = (uint)w;
+            uint stride = (uint)workers;
+            threads[w] = new Thread(() =>
             {
-                BinaryPrimitives.WriteUInt32BigEndian(prefix, n);
-                sha.AppendData(prefix);
-                sha.AppendData(area);
-                sha.GetHashAndReset(digest);
-                if (BinaryPrimitives.ReadUInt32BigEndian(digest) <= threshold)
+                using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                Span<byte> prefix = stackalloc byte[4];
+                Span<byte> digest = stackalloc byte[32];
+                for (uint n = start; Interlocked.Read(ref found) < 0; n = unchecked(n + stride))
                 {
-                    Interlocked.CompareExchange(ref found, n, -1);
-                    break;
+                    if (cancellationToken.IsCancellationRequested || Environment.TickCount64 > deadline)
+                    {
+                        return;
+                    }
+
+                    BinaryPrimitives.WriteUInt32BigEndian(prefix, n);
+                    sha.AppendData(prefix);
+                    sha.AppendData(area);
+                    sha.GetHashAndReset(digest);
+                    if (BinaryPrimitives.ReadUInt32BigEndian(digest) <= threshold)
+                    {
+                        Interlocked.CompareExchange(ref found, n, -1);
+                        return;
+                    }
                 }
+            })
+            {
+                IsBackground = true,
+                Priority = ThreadPriority.BelowNormal,
+                Name = "MEGA proof of work",
+            };
+            threads[w].Start();
+        }
 
-                n = unchecked(n + (uint)threads);
-            }
-        });
+        foreach (var t in threads)
+        {
+            t.Join();
+        }
 
+        cancellationToken.ThrowIfCancellationRequested();
         if (found < 0)
         {
             return null;
@@ -389,8 +444,11 @@ internal static class MegaCrypto
 
         var answer = new byte[4];
         BinaryPrimitives.WriteUInt32BigEndian(answer, (uint)found);
-        return "1:" + tokenB64 + ":" + B64Encode(answer);
+        return B64Encode(answer);
     }
+
+    private const int HashcashTokenBytes = 48;
+    private const int HashcashRepeat = 262_144;
 
     public static byte[] Utf8(string s) => Encoding.UTF8.GetBytes(s);
 }

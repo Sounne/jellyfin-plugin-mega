@@ -29,6 +29,7 @@ public sealed class MegaManager : IDisposable
     private readonly IServerConfigurationManager _serverConfig;
     private readonly IServerApplicationPaths _paths;
     private readonly object _configGate = new();
+    private readonly ConcurrentDictionary<string, LoginJob> _logins = new(StringComparer.Ordinal);
 
     public MegaManager(
         ILogger<MegaManager> logger,
@@ -37,6 +38,7 @@ public sealed class MegaManager : IDisposable
         IServerApplicationPaths paths)
     {
         _logger = logger;
+        MegaApiClient.Log = logger;
         _host = host;
         _serverConfig = serverConfig;
         _paths = paths;
@@ -295,10 +297,49 @@ public sealed class MegaManager : IDisposable
 
     // ---- Accounts --------------------------------------------------------------------------------
 
-    /// <summary>Logs in with e-mail and password (never stored) and saves the resulting session.</summary>
-    internal async Task<MegaAccountConfig> AddAccountAsync(string? name, string email, string password, string? mfa, CancellationToken cancellationToken)
+    /// <summary>
+    /// Starts a login in the background and returns its job. A login can take minutes when MEGA asks
+    /// for a proof of work, longer than a reverse proxy lets an HTTP request wait.
+    /// </summary>
+    internal LoginJob StartLogin(string? name, string email, string password, string? mfa)
     {
-        var api = new MegaApiClient();
+        foreach (var old in _logins)
+        {
+            if (old.Value.Finished is { } at && DateTime.UtcNow - at > TimeSpan.FromMinutes(15))
+            {
+                _logins.TryRemove(old.Key, out _);
+            }
+        }
+
+        var job = new LoginJob();
+        job.Task = Task.Run(async () =>
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromHours(1));
+            try
+            {
+                return await AddAccountAsync(name, email, password, mfa, cts.Token, s => job.Progress = s).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning("MEGA login of {Email} failed: {Message}", email.Trim(), e.Message);
+                throw;
+            }
+            finally
+            {
+                job.Finished = DateTime.UtcNow;
+            }
+        });
+        _logins[job.Id] = job;
+        return job;
+    }
+
+    /// <summary>Gets a login started by <see cref="StartLogin"/>.</summary>
+    internal LoginJob? GetLogin(string id) => _logins.TryGetValue(id, out var job) ? job : null;
+
+    /// <summary>Logs in with e-mail and password (never stored) and saves the resulting session.</summary>
+    internal async Task<MegaAccountConfig> AddAccountAsync(string? name, string email, string password, string? mfa, CancellationToken cancellationToken, Action<string>? progress = null)
+    {
+        var api = new MegaApiClient { Progress = progress };
         var session = await MegaAccountSession.LoginAsync(api, email, password, mfa, cancellationToken).ConfigureAwait(false);
         return SaveAccount(new MegaAccountConfig
         {
@@ -423,4 +464,22 @@ public sealed class MegaManager : IDisposable
     {
         Readers.Dispose();
     }
+}
+
+/// <summary>A login running in the background (settings page).</summary>
+internal sealed class LoginJob
+{
+    private volatile string _progress = "Logging in…";
+
+    public string Id { get; } = Guid.NewGuid().ToString("N");
+
+    public Task<MegaAccountConfig> Task { get; set; } = null!;
+
+    public string Progress
+    {
+        get => _progress;
+        set => _progress = value;
+    }
+
+    public DateTime? Finished { get; set; }
 }

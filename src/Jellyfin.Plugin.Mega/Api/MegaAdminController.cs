@@ -76,15 +76,56 @@ public class MegaAdminController : ControllerBase
         };
     }
 
+    /// <summary>Starts a login with e-mail and password. Poll <c>accounts/login/{id}</c> for the result.</summary>
     [HttpPost("accounts/login")]
-    public async Task<ActionResult<MegaAccountConfig>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
+    public ActionResult<LoginStatus> Login([FromBody] LoginRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrEmpty(request.Password))
         {
             return BadRequest("e-mail and password required");
         }
 
-        return await Run(() => _manager.AddAccountAsync(request.Name, request.Email, request.Password, request.Mfa, cancellationToken)).ConfigureAwait(false);
+        var job = _manager.StartLogin(request.Name, request.Email, request.Password, request.Mfa);
+        return Accepted(Describe(job));
+    }
+
+    /// <summary>State of a login started by <see cref="Login"/>.</summary>
+    [HttpGet("accounts/login/{id}")]
+    public ActionResult<LoginStatus> GetLogin([FromRoute] string id)
+    {
+        var job = _manager.GetLogin(id);
+        return job is null ? NotFound() : Describe(job);
+    }
+
+    private static LoginStatus Describe(LoginJob job)
+    {
+        var task = job.Task;
+        if (!task.IsCompleted)
+        {
+            return new LoginStatus { Id = job.Id, State = "running", Message = job.Progress };
+        }
+
+        if (task.IsCompletedSuccessfully)
+        {
+            var a = task.Result;
+            return new LoginStatus
+            {
+                Id = job.Id,
+                State = "done",
+                Account = new MegaAccountConfig { Id = a.Id, Name = a.Name, Kind = a.Kind, Email = a.Email },
+            };
+        }
+
+        var e = task.Exception?.GetBaseException();
+        var message = e switch
+        {
+            MegaException m => m.Message,
+            HttpRequestException h => "MEGA unreachable: " + h.Message,
+            OperationCanceledException => "the login took too long and was stopped",
+            null => "the login was stopped",
+            _ => "login failed: " + e.Message,
+        };
+        return new LoginStatus { Id = job.Id, State = "failed", Message = message };
     }
 
     [HttpPost("accounts/session")]
@@ -216,6 +257,18 @@ public class MegaAdminController : ControllerBase
         public string Password { get; set; } = string.Empty;
 
         public string? Mfa { get; set; }
+    }
+
+    public sealed class LoginStatus
+    {
+        public string Id { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets running, done or failed.</summary>
+        public string State { get; set; } = string.Empty;
+
+        public string? Message { get; set; }
+
+        public MegaAccountConfig? Account { get; set; }
     }
 
     public sealed class SessionRequest

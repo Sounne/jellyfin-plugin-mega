@@ -8,6 +8,22 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.1.12",
+        "changelog": "Fix login when MEGA asks for a proof of work: retries resend the same request, as the official MEGA apps do; the computation is time-boxed, can be cancelled and runs at low priority. Login now runs in the background and the settings page shows its progress, so reverse-proxy timeouts no longer break it.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/Sounne/jellyfin-plugin-mega/releases/download/v1.0.1/jellyfin-plugin-mega_1.0.1.12.zip",
+        "checksum": "4b904fb46da3e103f569bb5bea7cd163",
+        "timestamp": "2026-11-10T21:39:58Z"
+      },
+      {
+        "version": "1.0.1.11",
+        "changelog": "Fix login when MEGA asks for a proof of work: retries resend the same request, as the official MEGA apps do; the computation is time-boxed, can be cancelled and runs at low priority. Login now runs in the background and the settings page shows its progress, so reverse-proxy timeouts no longer break it.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Sounne/jellyfin-plugin-mega/releases/download/v1.0.1/jellyfin-plugin-mega_1.0.1.11.zip",
+        "checksum": "0261b22dc06d4e3b7737992b14b0ac32",
+        "timestamp": "2026-11-10T21:39:58Z"
+      },
+      {
         "version": "1.0.0.12",
         "changelog": "First release: MEGA accounts (e-mail, 2FA, MEGAcmd session) and public folder links, end-to-end decryption, virtual libraries, streaming with seeking, MEGA previews as thumbnails, incremental change tracking.",
         "targetAbi": "12.0.0.0",

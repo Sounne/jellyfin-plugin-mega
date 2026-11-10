@@ -400,20 +400,53 @@ export default function (view) {
         return false;
     }
 
+    async function sourceAdded(form) {
+        form.reset();
+        await reloadAccounts();
+        if (!librariesHost.querySelector('.megaLibrary')) {
+            addLibraryRow({ AccountId: config.Accounts[config.Accounts.length - 1].Id, MegaPath: '/', LibraryName: '' });
+        }
+
+        Dashboard.alert('MEGA source added. Pick a folder for your library, then save.');
+    }
+
     async function addSource(form, path, body) {
         Dashboard.showLoadingMsg();
         try {
             await api('POST', path, body, true);
-            form.reset();
-            await reloadAccounts();
-            if (!librariesHost.querySelector('.megaLibrary')) {
-                addLibraryRow({ AccountId: config.Accounts[config.Accounts.length - 1].Id, MegaPath: '/', LibraryName: '' });
-            }
-
-            Dashboard.alert('MEGA source added. Pick a folder for your library, then save.');
+            await sourceAdded(form);
         } catch (e) {
             Dashboard.alert(e.message);
         } finally {
+            Dashboard.hideLoadingMsg();
+        }
+    }
+
+    // The login runs on the server; it can take minutes when MEGA asks for a proof of work.
+    async function login(form, body) {
+        const line = $('#megaLoginStatus');
+        const button = form.querySelector('button[type=submit]');
+        button.disabled = true;
+        Dashboard.showLoadingMsg();
+        try {
+            let job = await api('POST', 'MegaFs/accounts/login', body, true);
+            while (job.State === 'running') {
+                line.textContent = job.Message || 'Logging in…';
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                job = await api('GET', 'MegaFs/accounts/login/' + encodeURIComponent(job.Id), undefined, true);
+            }
+
+            if (job.State !== 'done') {
+                throw new Error(job.Message || 'Login failed');
+            }
+
+            line.textContent = '';
+            await sourceAdded(form);
+        } catch (e) {
+            line.textContent = '';
+            Dashboard.alert(e.message);
+        } finally {
+            button.disabled = false;
             Dashboard.hideLoadingMsg();
         }
     }
@@ -425,7 +458,7 @@ export default function (view) {
 
     $('#megaLoginForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        addSource(e.target, 'MegaFs/accounts/login', {
+        login(e.target, {
             Name: $('#megaLoginName').value.trim() || null,
             Email: $('#megaLoginEmail').value.trim(),
             Password: $('#megaLoginPassword').value,

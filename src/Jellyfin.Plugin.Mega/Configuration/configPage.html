@@ -54,8 +54,9 @@
                         <div class="inputContainer"><input is="emby-input" type="password" id="megaLoginPassword" label="Password" autocomplete="current-password" required></div>
                         <div class="inputContainer"><input is="emby-input" type="text" id="megaLoginMfa" label="2FA code (if enabled)" inputmode="numeric" autocomplete="one-time-code"></div>
                     </div>
-                    <p class="megaMuted">The password is used once to log in and is never stored: only the session is kept, in the plugin configuration of this server.</p>
+                    <p class="megaMuted">The password is used once to log in and is never stored: only the session is kept, in the plugin configuration of this server. If MEGA asks for a proof of work (an anti-abuse check), logging in can take a few minutes.</p>
                     <button is="emby-button" type="submit" class="raised button-submit emby-button"><span>Log in</span></button>
+                    <p id="megaLoginStatus" class="megaMuted" aria-live="polite"></p>
                 </form>
                 <form id="megaSessionForm" class="megaTabPanel hide" data-tab="session">
                     <div class="megaRow">

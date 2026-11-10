@@ -27,6 +27,7 @@ Open **Dashboard → Plugins → MEGA**.
 
 1. **Add a source.** Choose one of these:
    - **Account (e-mail):** your e-mail, password and 2FA code if you use it. The password is used once to log in and is never stored. Only the session is kept.
+     MEGA sometimes asks for a proof of work before it accepts a login (an anti-abuse check). The plugin computes it and the page shows the progress. This takes seconds on a recent CPU, but can take several minutes on a small NAS. If it takes too long, use a MEGAcmd session instead.
    - **Session (MEGAcmd):** the output of `mega-session`.
    - **Public folder link:** a `https://mega.nz/folder/…#…` link that includes its key.
 2. **Add a library.** Choose the source, click **Browse** to pick a MEGA folder, give the library a name and a type (Movies, Shows, Music…), then click **Save**.
@@ -122,6 +123,7 @@ Ouvrez **Tableau de bord → Extensions → MEGA**.
 
 1. **Ajoutez une source.** Au choix :
    - **Compte (e-mail) :** e-mail, mot de passe et code 2FA si activé. Le mot de passe sert une fois pour se connecter et n'est jamais enregistré. Seule la session est gardée.
+     MEGA demande parfois une preuve de travail avant d'accepter une connexion (contrôle anti-abus). Le plugin la calcule et la page affiche l'avancement. Cela prend quelques secondes sur un processeur récent, mais peut prendre plusieurs minutes sur un petit NAS. Si c'est trop long, utilisez plutôt une session MEGAcmd.
    - **Session (MEGAcmd) :** le résultat de `mega-session`.
    - **Lien de dossier public :** un lien `https://mega.nz/folder/…#…` avec sa clé.
 2. **Ajoutez une bibliothèque.** Choisissez la source, cliquez sur **Browse** pour choisir un dossier MEGA, donnez un nom et un type (Films, Séries, Musique…), puis cliquez sur **Save**.
