@@ -16,4 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Jellyfin.Plugin.Mega\Jellyfin.Plugin.Mega.csproj" SetTargetFramework="TargetFramework=net10.0" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Fixtures\*.mkv;Fixtures\expected.*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

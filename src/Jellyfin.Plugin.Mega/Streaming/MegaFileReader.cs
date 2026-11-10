@@ -49,14 +49,14 @@ internal sealed class MegaFileReader : IDisposable
     private int _workersStarted;
     private int _idleWorkers;
     private Exception? _fatal;
-    private string? _url;
-    private bool _plainHttp;
+    private readonly MegaDownloadLink _link;
     private long _lastAccess = Environment.TickCount64;
     private bool _disposed;
 
     public MegaFileReader(MegaSource source, MegaNode node, BlockDiskCache? disk, ILogger logger, int aheadMegabytes, int connections)
     {
         _source = source;
+        _link = new MegaDownloadLink(source, node.Handle);
         _node = node;
         _disk = disk;
         _logger = logger;
@@ -575,7 +575,7 @@ internal sealed class MegaFileReader : IDisposable
 
         long from = start * BlockSize;
         long to = Math.Min(end * BlockSize, Size);
-        using var resp = await OpenRangeAsync(from, to, ct).ConfigureAwait(false);
+        using var resp = await _link.OpenRangeAsync(from, to, ct).ConfigureAwait(false);
         await using var body = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
         for (long idx = start; idx < end; idx++)
         {
@@ -597,57 +597,6 @@ internal sealed class MegaFileReader : IDisposable
                 ReleaseClaims(idx + 1, end);
                 return;
             }
-        }
-    }
-
-    private async Task<HttpResponseMessage> OpenRangeAsync(long from, long to, CancellationToken ct)
-    {
-        for (int attempt = 0; ; attempt++)
-        {
-            var url = _url ??= await _source.GetDownloadUrlAsync(_node.Handle, false, _plainHttp, ct).ConfigureAwait(false);
-            HttpResponseMessage resp;
-            try
-            {
-                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                timeout.CancelAfter(TimeSpan.FromSeconds(30));
-                using var req = new HttpRequestMessage(HttpMethod.Get, $"{url}/{from}-{to - 1}");
-                resp = await MegaHttp.Storage.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
-            }
-            catch (HttpRequestException e) when (MegaHttp.IsTlsRefusal(e) && !_plainHttp)
-            {
-                _plainHttp = true;
-                _url = null;
-                continue;
-            }
-
-            if (resp.IsSuccessStatusCode)
-            {
-                return resp;
-            }
-
-            int status = (int)resp.StatusCode;
-            resp.Dispose();
-            if (status == 509)
-            {
-                throw new MegaException("MEGA transfer quota exceeded, try again later") { HttpStatus = 509 };
-            }
-
-            if (status is 403 or 404 or 410 && attempt < 2)
-            {
-                // Expired URL: one fresh request for all connections.
-                lock (_gate)
-                {
-                    if (_url == url)
-                    {
-                        _url = null;
-                    }
-                }
-
-                _source.ForgetDownloadUrl(_node.Handle);
-                continue;
-            }
-
-            throw new MegaException($"HTTP {status} from the MEGA storage server") { HttpStatus = status };
         }
     }
 

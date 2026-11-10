@@ -1,0 +1,49 @@
+[Script Info]
+Title: fixture
+ScriptType: v4.00+
+PlayResX: 384
+PlayResY: 288
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,10,1
+Style: Top,Arial,18,&H0000FFFF,&H000000FF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,2,0,8,10,10,10,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:02.00,0:00:05.50,Top,Bob,0,0,0,,Event 0, with, commas{\i1} and tags\Nnext line
+Dialogue: 2,0:00:03.00,0:00:04.00,Default,,0,0,0,,Overlap 0
+Dialogue: 1,0:00:06.50,0:00:10.00,Default,Bob,0,0,0,,Event 1, with, commas{\i1} and tags\Nnext line
+Dialogue: 0,0:00:11.00,0:00:14.50,Default,Bob,0,0,0,,Event 2, with, commas{\i1} and tags\Nnext line
+Dialogue: 1,0:00:15.50,0:00:19.00,Default,Bob,0,0,0,,Event 3, with, commas{\i1} and tags\Nnext line
+Dialogue: 0,0:00:20.00,0:00:23.50,Top,Bob,0,0,0,,Event 4, with, commas{\i1} and tags\Nnext line
+Dialogue: 1,0:00:24.50,0:00:28.00,Default,Bob,0,0,0,,Event 5, with, commas{\i1} and tags\Nnext line
+Dialogue: 2,0:00:25.50,0:00:26.50,Default,,0,0,0,,Overlap 5
+Dialogue: 0,0:00:29.00,0:00:32.50,Default,Bob,0,0,0,,Event 6, with, commas{\i1} and tags\Nnext line
+Dialogue: 1,0:00:33.50,0:00:37.00,Default,Bob,0,0,0,,Event 7, with, commas{\i1} and tags\Nnext line
+Dialogue: 0,0:00:38.00,0:00:41.50,Top,Bob,0,0,0,,Event 8, with, commas{\i1} and tags\Nnext line
+Dialogue: 1,0:00:42.50,0:00:46.00,Default,Bob,0,0,0,,Event 9, with, commas{\i1} and tags\Nnext line
+Dialogue: 0,0:00:47.00,0:00:50.50,Default,Bob,0,0,0,,Event 10, with, commas{\i1} and tags\Nnext line
+Dialogue: 2,0:00:48.00,0:00:49.00,Default,,0,0,0,,Overlap 10
+Dialogue: 1,0:00:51.50,0:00:55.00,Default,Bob,0,0,0,,Event 11, with, commas{\i1} and tags\Nnext line
+Dialogue: 0,0:00:56.00,0:00:59.50,Top,Bob,0,0,0,,Event 12, with, commas{\i1} and tags\Nnext line
+Dialogue: 1,0:01:00.50,0:01:04.00,Default,Bob,0,0,0,,Event 13, with, commas{\i1} and tags\Nnext line
+Dialogue: 0,0:01:05.00,0:01:08.50,Default,Bob,0,0,0,,Event 14, with, commas{\i1} and tags\Nnext line
+Dialogue: 1,0:01:09.50,0:01:13.00,Default,Bob,0,0,0,,Event 15, with, commas{\i1} and tags\Nnext line
+Dialogue: 2,0:01:10.50,0:01:11.50,Default,,0,0,0,,Overlap 15
+Dialogue: 0,0:01:14.00,0:01:17.50,Top,Bob,0,0,0,,Event 16, with, commas{\i1} and tags\Nnext line
+Dialogue: 1,0:01:18.50,0:01:22.00,Default,Bob,0,0,0,,Event 17, with, commas{\i1} and tags\Nnext line
+Dialogue: 0,0:01:23.00,0:01:26.50,Default,Bob,0,0,0,,Event 18, with, commas{\i1} and tags\Nnext line
+Dialogue: 1,0:01:27.50,0:01:31.00,Default,Bob,0,0,0,,Event 19, with, commas{\i1} and tags\Nnext line
+Dialogue: 0,0:01:32.00,0:01:35.50,Top,Bob,0,0,0,,Event 20, with, commas{\i1} and tags\Nnext line
+Dialogue: 2,0:01:33.00,0:01:34.00,Default,,0,0,0,,Overlap 20
+Dialogue: 1,0:01:36.50,0:01:40.00,Default,Bob,0,0,0,,Event 21, with, commas{\i1} and tags\Nnext line
+Dialogue: 0,0:01:41.00,0:01:44.50,Default,Bob,0,0,0,,Event 22, with, commas{\i1} and tags\Nnext line
+Dialogue: 1,0:01:45.50,0:01:49.00,Default,Bob,0,0,0,,Event 23, with, commas{\i1} and tags\Nnext line
+Dialogue: 0,0:01:50.00,0:01:53.50,Top,Bob,0,0,0,,Event 24, with, commas{\i1} and tags\Nnext line
+Dialogue: 1,0:01:54.50,0:01:58.00,Default,Bob,0,0,0,,Event 25, with, commas{\i1} and tags\Nnext line
+Dialogue: 2,0:01:55.50,0:01:56.50,Default,,0,0,0,,Overlap 25
+Dialogue: 0,0:01:59.00,0:02:02.50,Default,Bob,0,0,0,,Event 26, with, commas{\i1} and tags\Nnext line
+Dialogue: 1,0:02:03.50,0:02:07.00,Default,Bob,0,0,0,,Event 27, with, commas{\i1} and tags\Nnext line
+Dialogue: 0,0:02:08.00,0:02:11.50,Top,Bob,0,0,0,,Event 28, with, commas{\i1} and tags\Nnext line
+Dialogue: 1,0:02:12.50,0:02:16.00,Default,Bob,0,0,0,,Event 29, with, commas{\i1} and tags\Nnext line

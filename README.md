@@ -58,6 +58,7 @@ A full resynchronization also runs once a day (**Dashboard → Scheduled tasks �
 - When Jellyfin or a client reads a file, the plugin downloads only the requested byte ranges from MEGA and decrypts them with AES-CTR. Seeks jump straight to the right block.
 - On playback requests, the plugin tells Jellyfin the item is a local file with its real size. Clients can then direct play with byte ranges, and Jellyfin's usual access control applies.
 - Jellyfin runs ffprobe and ffmpeg with a 200-second analysis window. When a track has no full description in the file header (PGS subtitles in MKV, for example), ffmpeg then reads about 350 MB of a 1080p movie before it starts. For MEGA items only, the plugin shortens that window to 10 seconds: playback info, transcode start and seek take about a second instead of 10 to 25.
+- When a client cannot take embedded subtitles with the video (a Chromecast or Android TV transcode, subtitles drawn by the web player, burned-in text), Jellyfin extracts them with ffmpeg, which reads the whole file: minutes and gigabytes of quota before the first line shows. For MEGA MKV files, the plugin reads only the subtitle blocks instead, located through the file's index (cues), and writes them to Jellyfin's subtitle cache: a few seconds and a few MB (an episode with 3 tracks: 6 s, 4 MB; a movie with 7 tracks: 11 s, 15 MB). This starts with the playback info, and subtitle requests wait for it. It is done once per file.
 
 ## Security
 
@@ -70,7 +71,7 @@ A full resynchronization also runs once a day (**Dashboard → Scheduled tasks �
 - **MEGA transfer quota.** Everything you watch counts against your MEGA transfer quota. That includes reads by Jellyfin: probing, frame extraction and subtitle extraction. Free accounts have a small quota.
 - Jellyfin probes a `.strm` item again each time playback starts. This adds a fraction of a second, mostly served from the disk cache.
 - Trickplay images and chapter images are not generated for these items, because they would read whole files.
-- Extracting embedded subtitles makes Jellyfin read the whole file. External subtitle files next to the video are fast.
+- Embedded subtitles are read from the subtitle blocks only in MKV files whose index lists them, which mkvmerge and ffmpeg do. For other files (older MKVs, MP4, VobSub tracks), Jellyfin's extraction reads the whole file the first time a client needs them as a separate file. External subtitle files next to the video are always fast.
 - Jellyfin applies no bitrate limit to these items. Clients on slow links should pick a quality by hand.
 - A file that the plugin ignored because of its name (for example `film.mkv.part`) and that is later renamed to a media name shows up only after the daily full resynchronization.
 - Not affiliated with MEGA or Jellyfin.
@@ -147,8 +148,9 @@ Les réglages sont décrits dans le tableau [Settings](#settings) plus haut. Une
 - **Quota de transfert MEGA.** Tout ce que vous regardez compte dans votre quota de transfert MEGA. Les lectures de Jellyfin comptent aussi : analyse, extraction d'images et de sous-titres. Les comptes gratuits ont un petit quota.
 - Jellyfin analyse de nouveau un élément `.strm` à chaque début de lecture. Cela ajoute une fraction de seconde, servie en grande partie depuis le cache disque.
 - Jellyfin lance ffprobe et ffmpeg avec une fenêtre d'analyse de 200 secondes. Quand une piste n'est pas entièrement décrite dans l'en-tête du fichier (sous-titres PGS dans un MKV, par exemple), ffmpeg lit alors environ 350 Mo d'un film 1080p avant de démarrer. Pour les éléments MEGA seulement, le plugin réduit cette fenêtre à 10 secondes (réglage avancé **ffmpeg analysis of MEGA files**, 0 = réglage de Jellyfin).
+- Quand un client ne peut pas prendre les sous-titres intégrés avec la vidéo (transcodage Chromecast ou Android TV, sous-titres affichés par le lecteur web, texte incrusté), Jellyfin les extrait avec ffmpeg, qui lit tout le fichier. Pour les MKV sur MEGA, le plugin lit seulement les blocs de sous-titres, repérés par l'index du fichier (cues), et les écrit dans le cache de sous-titres de Jellyfin : quelques secondes et quelques Mo, une seule fois par fichier.
 - Pas d'images trickplay ni d'images de chapitres pour ces éléments : il faudrait lire les fichiers en entier.
-- Extraire des sous-titres intégrés fait lire tout le fichier à Jellyfin. Les sous-titres externes à côté de la vidéo sont rapides.
+- Ce raccourci demande un MKV dont l'index liste les blocs de sous-titres (cas de mkvmerge et ffmpeg). Pour les autres fichiers (anciens MKV, MP4, pistes VobSub), l'extraction de Jellyfin lit tout le fichier la première fois qu'un client a besoin des sous-titres à part. Les sous-titres externes à côté de la vidéo sont toujours rapides.
 - Jellyfin n'applique pas de limite de débit à ces éléments. Sur une connexion lente, choisissez la qualité à la main.
 - Un fichier ignoré à cause de son nom (par exemple `film.mkv.part`) puis renommé en nom de média n'apparaît qu'après la resynchronisation complète quotidienne.
 - Projet non affilié à MEGA ni à Jellyfin.

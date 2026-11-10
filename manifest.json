@@ -8,6 +8,22 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.3.12",
+        "changelog": "Embedded subtitles of MEGA MKV files no longer make Jellyfin read the whole file. When a client cannot take them with the video (Chromecast and Android TV transcodes, the web player, burned-in text), the plugin reads only the subtitle blocks through the MKV index (cues) and fills Jellyfin's subtitle cache: a few seconds and a few MB per file instead of minutes and gigabytes of transfer quota. Fixes subtitles that never load and playback errors on Chromecast.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/Sounne/jellyfin-plugin-mega/releases/download/v1.0.3/jellyfin-plugin-mega_1.0.3.12.zip",
+        "checksum": "5ae439aa4fdc0b2535e02ecb81f149d1",
+        "timestamp": "2026-11-10T23:11:41Z"
+      },
+      {
+        "version": "1.0.3.11",
+        "changelog": "Embedded subtitles of MEGA MKV files no longer make Jellyfin read the whole file. When a client cannot take them with the video (Chromecast and Android TV transcodes, the web player, burned-in text), the plugin reads only the subtitle blocks through the MKV index (cues) and fills Jellyfin's subtitle cache: a few seconds and a few MB per file instead of minutes and gigabytes of transfer quota. Fixes subtitles that never load and playback errors on Chromecast.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Sounne/jellyfin-plugin-mega/releases/download/v1.0.3/jellyfin-plugin-mega_1.0.3.11.zip",
+        "checksum": "8ed2de66aba9dfd4ac6e397e808d5bad",
+        "timestamp": "2026-11-10T23:11:41Z"
+      },
+      {
         "version": "1.0.2.12",
         "changelog": "Faster playback start, transcode and seek on MEGA files (Chromecast, Android TV): ffprobe and ffmpeg analyse 10 seconds of a MEGA file instead of 200. Files with PGS subtitles no longer read about 350 MB at each playback start and seek.",
         "targetAbi": "12.0.0.0",
