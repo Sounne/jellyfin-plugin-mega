@@ -65,8 +65,11 @@ internal sealed class MegaApiClient
     /// <summary>Gets or sets the logger for proof-of-work events (set when the plugin starts).</summary>
     public static ILogger? Log { get; set; }
 
+    /// <summary>Gets or sets the API address of new clients (tests point every client at a local server).</summary>
+    internal static string DefaultApiBase { get; set; } = "https://g.api.mega.co.nz/";
+
     /// <summary>Gets the base address of the API (tests use a local server).</summary>
-    public string ApiBase { get; init; } = "https://g.api.mega.co.nz/";
+    public string ApiBase { get; init; } = DefaultApiBase;
 
     /// <summary>Gets or sets the session id (account).</summary>
     public string? Sid { get; set; }

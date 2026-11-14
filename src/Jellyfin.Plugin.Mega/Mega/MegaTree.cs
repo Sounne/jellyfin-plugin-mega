@@ -516,7 +516,17 @@ internal sealed class MegaTree
                 }
             }
 
-            int consumed = builder.Process(buffer.AsSpan(0, len), final, ref state);
+            int consumed;
+            try
+            {
+                consumed = builder.Process(buffer.AsSpan(0, len), final, ref state);
+            }
+            catch (JsonException e)
+            {
+                // Connection closed in the middle of the tree (or damaged answer).
+                throw new MegaException("incomplete node tree received from MEGA", e);
+            }
+
             if (builder.ErrorCode is int code)
             {
                 throw new MegaException(code);

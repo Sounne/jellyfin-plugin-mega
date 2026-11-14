@@ -91,6 +91,13 @@ The script writes one zip per Jellyfin version to `artifacts/` and updates `mani
 gh release create v1.0.1 artifacts/*.zip --title 1.0.1 --notes "What changed"
 ```
 
+`dotnet test` runs offline in about 15 seconds. A fake MEGA server on `127.0.0.1` answers the API, change polls, downloads and previews, so the tests cover the plugin end to end:
+
+- Login (password, 2FA, MEGAcmd session), folder links, the node tree and its cache, live changes.
+- Encrypted downloads: ranges, renewed URLs, transfer quota, disk cache, shared readers.
+- Library sync to `.strm` files, the stream endpoint (signed URLs, ranges, HEAD), and the playback filter.
+- The settings page API, previews, subtitles, and the package (`manifest.json`, embedded pages).
+
 The live tests run only when `MEGA_TOML` points to a file that contains `session = "…"` or `folder_link = "…"`.
 
 ## License
