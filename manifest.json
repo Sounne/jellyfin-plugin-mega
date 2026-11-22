@@ -8,6 +8,22 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.4.12",
+        "changelog": "Smoother playback on Android TV and other clients, especially far from MEGA's servers. Each request to MEGA now carries several MB of the read-ahead instead of 1 MB, so the time MEGA takes to answer is paid once per run, not once per MB. With a server that answers in 300 ms, the client buffer now fills (18-20 s after 25 s of 6 MB/s playback instead of 2-3 s, where any slow answer paused playback), with 5 to 9 times fewer requests, and transcodes read 1.4 to 2 times faster. Seeking and playback start are unchanged.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/Sounne/jellyfin-plugin-mega/releases/download/v1.0.4/jellyfin-plugin-mega_1.0.4.12.zip",
+        "checksum": "678eb06c54bf0fd9303f8fccacd18a83",
+        "timestamp": "2026-11-22T20:40:05Z"
+      },
+      {
+        "version": "1.0.4.11",
+        "changelog": "Smoother playback on Android TV and other clients, especially far from MEGA's servers. Each request to MEGA now carries several MB of the read-ahead instead of 1 MB, so the time MEGA takes to answer is paid once per run, not once per MB. With a server that answers in 300 ms, the client buffer now fills (18-20 s after 25 s of 6 MB/s playback instead of 2-3 s, where any slow answer paused playback), with 5 to 9 times fewer requests, and transcodes read 1.4 to 2 times faster. Seeking and playback start are unchanged.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Sounne/jellyfin-plugin-mega/releases/download/v1.0.4/jellyfin-plugin-mega_1.0.4.11.zip",
+        "checksum": "259cb27cafef5da3ccbb37dead5238ca",
+        "timestamp": "2026-11-22T20:40:05Z"
+      },
+      {
         "version": "1.0.3.12",
         "changelog": "Embedded subtitles of MEGA MKV files no longer make Jellyfin read the whole file. When a client cannot take them with the video (Chromecast and Android TV transcodes, the web player, burned-in text), the plugin reads only the subtitle blocks through the MKV index (cues) and fills Jellyfin's subtitle cache: a few seconds and a few MB per file instead of minutes and gigabytes of transfer quota. Fixes subtitles that never load and playback errors on Chromecast.",
         "targetAbi": "12.0.0.0",

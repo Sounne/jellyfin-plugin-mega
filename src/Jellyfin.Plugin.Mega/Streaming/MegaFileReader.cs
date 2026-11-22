@@ -19,8 +19,9 @@ namespace Jellyfin.Plugin.Mega.Streaming;
 /// The file is cut into 1 MiB blocks kept in memory. Several worker connections download blocks in
 /// parallel: first the blocks a reader is waiting for, then the read-ahead window in front of the most
 /// recent read positions. The window grows with sequential reading (a probe reading a few MB of a file
-/// does not trigger a large download; playback quickly gets the full window). Blocks right in front of a
-/// read position are fetched one per connection, further ones by longer runs. A worker busy with
+/// does not trigger a large download; playback quickly gets the full window). The window is shared by the
+/// connections, a few blocks per request: one block each right after a seek, longer runs as the window grows,
+/// so that the answer time of the storage server is paid once per run during playback. A worker busy with
 /// read-ahead gives up its run as soon as a reader waits for a block nobody fetches (seek), so a seek
 /// never waits behind read-ahead. Blocks are decrypted (AES-CTR) as they arrive; the start and end of the file are
 /// also kept on disk (still encrypted) so that probing and playback start are instant next time.
@@ -30,7 +31,7 @@ internal sealed class MegaFileReader : IDisposable
 {
     public const int BlockSize = 1 << 20;
     private const int MaxRegions = 3;
-    private const int RunBlocks = 8;
+    private const int RunBlocks = 16;
     private const int MinWindow = 3;
     private readonly MegaSource _source;
     private readonly MegaNode _node;
@@ -52,6 +53,8 @@ internal sealed class MegaFileReader : IDisposable
     private readonly MegaDownloadLink _link;
     private long _lastAccess = Environment.TickCount64;
     private bool _disposed;
+    private long _requests;
+    private long _retries;
 
     public MegaFileReader(MegaSource source, MegaNode node, BlockDiskCache? disk, ILogger logger, int aheadMegabytes, int connections)
     {
@@ -79,6 +82,12 @@ internal sealed class MegaFileReader : IDisposable
     public bool IsFailed => _fatal is not null;
 
     public long IdleMilliseconds => Environment.TickCount64 - Interlocked.Read(ref _lastAccess);
+
+    /// <summary>Gets the number of range requests sent to the storage server (diagnostics, tests).</summary>
+    internal long Requests => Interlocked.Read(ref _requests);
+
+    /// <summary>Gets the number of failed block fetches that were retried (diagnostics, tests).</summary>
+    internal long Retries => Interlocked.Read(ref _retries);
 
     /// <summary>
     /// Reads at most <paramref name="buffer"/>.Length decrypted bytes at <paramref name="offset"/>.
@@ -240,35 +249,27 @@ internal sealed class MegaFileReader : IDisposable
 
     private bool IsMissing(long idx) => !_blocks.TryGetValue(idx, out var b) || (!b.InFlight && !b.Tcs.Task.IsCompleted);
 
-    private bool InWindow(long idx)
-    {
-        foreach (var r in _regions)
-        {
-            if (idx >= r.Pos && idx <= r.Pos + Window(r))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     /// <summary>
-    /// Longest run starting at <paramref name="idx"/>: one block right in front of a read position (several
-    /// connections share the next blocks, so the data needed now arrives in parallel), longer runs further.
+    /// Longest run starting at <paramref name="idx"/> and the last block it may reach. The read-ahead window of
+    /// the read position in front of it is shared by the connections, a few blocks each: right after a seek the
+    /// window is small and each connection fetches one block (the data needed now arrives in parallel); during
+    /// playback each request carries several blocks, so the time the server takes to answer a request is paid
+    /// once per run, not once per block. A run may go a little past the window: steady playback then asks for a
+    /// whole run each time, not one block each time the read position moves.
     /// </summary>
-    private int RunLimit(long idx)
+    private (int Limit, long Last) RunBounds(long idx)
     {
-        long distance = long.MaxValue;
         foreach (var r in _regions)
         {
-            if (idx >= r.Pos)
+            long window = Window(r);
+            if (idx >= r.Pos && idx <= r.Pos + window)
             {
-                distance = Math.Min(distance, idx - r.Pos);
+                int limit = (int)Math.Clamp((window + _workerCount - 1) / _workerCount, 1, RunBlocks);
+                return (limit, Math.Min(r.Pos + window + limit - 1, _lastBlock));
             }
         }
 
-        return distance == long.MaxValue ? RunBlocks : (int)Math.Clamp(distance / _workerCount, 1, RunBlocks);
+        return (1, idx);
     }
 
     /// <summary>Next run of blocks to download (claimed by the caller), or false when there is nothing to do.</summary>
@@ -326,8 +327,8 @@ internal sealed class MegaFileReader : IDisposable
         }
 
         count = 1;
-        int limit = RunLimit(first);
-        while (count < limit && first + count <= _lastBlock && IsMissing(first + count) && InWindow(first + count))
+        var (limit, last) = RunBounds(first);
+        while (count < limit && first + count <= last && IsMissing(first + count))
         {
             count++;
         }
@@ -523,6 +524,7 @@ internal sealed class MegaFileReader : IDisposable
             catch (Exception e)
             {
                 ReleaseClaims(start, start + count);
+                Interlocked.Increment(ref _retries);
                 fails++;
                 if (IsFatal(e) || fails >= 6)
                 {
@@ -575,6 +577,7 @@ internal sealed class MegaFileReader : IDisposable
 
         long from = start * BlockSize;
         long to = Math.Min(end * BlockSize, Size);
+        Interlocked.Increment(ref _requests);
         using var resp = await _link.OpenRangeAsync(from, to, ct).ConfigureAwait(false);
         await using var body = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
         for (long idx = start; idx < end; idx++)
